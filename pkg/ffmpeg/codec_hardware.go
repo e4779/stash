@@ -447,6 +447,44 @@ func (f *FFMpeg) hwMaxResFilter(toCodec VideoCodec, vf *models.VideoFile, reqHei
 	return f.hwCodecFilter(videoFilter, toCodec, vf, fullhw)
 }
 
+// HWPreviewCodec returns the first supported hardware H264 codec that can
+// be used to generate video assets (previews, markers), or nil if hardware
+// acceleration is unavailable.
+func (f *FFMpeg) HWPreviewCodec() *VideoCodec {
+	for _, element := range f.getHWCodecSupport() {
+		switch element {
+		case VideoCodecN264H, VideoCodecN264,
+			VideoCodecI264, VideoCodecI264C,
+			VideoCodecV264, VideoCodecR264, VideoCodecRK264:
+			return &element
+		}
+	}
+	return nil
+}
+
+// HWInputArgs returns the input-side arguments required to initialise the
+// hardware device for the given codec (non-full-hw path).
+func (f *FFMpeg) HWInputArgs(codec VideoCodec) Args {
+	return f.hwDeviceInit(nil, codec, false)
+}
+
+// HWVideoFilter returns the video filter that uploads frames to the hardware
+// and scales to the given width for the given codec (non-full-hw path).
+func (f *FFMpeg) HWVideoFilter(codec VideoCodec, width int) VideoFilter {
+	var videoFilter VideoFilter
+	switch codec {
+	case VideoCodecV264, VideoCodecVVP9:
+		videoFilter = videoFilter.Append(fmt.Sprintf("format=nv12,hwupload,scale_vaapi=w=%d:h=-2:format=nv12", width))
+	case VideoCodecN264, VideoCodecN264H:
+		videoFilter = videoFilter.Append(fmt.Sprintf("format=nv12,hwupload_cuda,scale_cuda=w=%d:h=-2:format=yuv420p", width))
+	case VideoCodecI264, VideoCodecI264C:
+		videoFilter = videoFilter.Append(fmt.Sprintf("hwupload=extra_hw_frames=64,format=qsv,scale_qsv=w=%d:h=-2:format=nv12", width))
+	default:
+		videoFilter = videoFilter.ScaleWidth(width)
+	}
+	return videoFilter
+}
+
 // Return if a hardware accelerated for HLS is available
 func (f *FFMpeg) hwCodecHLSCompatible() *VideoCodec {
 	for _, element := range f.getHWCodecSupport() {

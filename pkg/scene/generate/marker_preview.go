@@ -102,12 +102,27 @@ func (g Generator) markerPreviewVideo(input string, options sceneMarkerOptions) 
 			"-strict", "-2",
 		)
 
+		videoCodec := ffmpeg.VideoCodecLibX264
+		inputArgs := g.FFMpegConfig.GetTranscodeInputArgs()
+
+		if g.Encoder != nil {
+			if hwCodec := g.Encoder.HWPreviewCodec(); hwCodec != nil {
+				videoCodec = *hwCodec
+				videoFilter = g.Encoder.HWVideoFilter(*hwCodec, markerPreviewWidth)
+				videoArgs = ffmpeg.Args{}.VideoFilter(videoFilter)
+				videoArgs = append(videoArgs, ffmpeg.CodecInit(*hwCodec)...)
+				inputArgs = append(g.Encoder.HWInputArgs(*hwCodec), inputArgs...)
+			}
+		}
+
 		trimOptions := transcoder.TranscodeOptions{
 			Duration:   options.Duration,
 			StartTime:  options.Seconds,
 			OutputPath: tmpFn,
-			VideoCodec: ffmpeg.VideoCodecLibX264,
+			VideoCodec: videoCodec,
 			VideoArgs:  videoArgs,
+
+			ExtraInputArgs: inputArgs,
 		}
 
 		if options.Audio {

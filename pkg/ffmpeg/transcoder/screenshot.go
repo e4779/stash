@@ -6,6 +6,10 @@ type ScreenshotOptions struct {
 	OutputPath string
 	OutputType ScreenshotOutputType
 
+	// InputArgs are extra arguments applied before the input.
+	// Used for hardware-accelerated decoding, for example.
+	InputArgs []string
+
 	// Quality is the quality scale. See https://ffmpeg.org/ffmpeg.html#Main-options
 	Quality int
 
@@ -63,6 +67,8 @@ func ScreenshotTime(input string, t float64, options ScreenshotOptions) ffmpeg.A
 	var args ffmpeg.Args
 	args = args.LogLevel(options.Verbosity)
 	args = args.Overwrite()
+
+	args = append(args, options.InputArgs...)
 
 	if !options.SlowSeek {
 		args = args.Seek(t)

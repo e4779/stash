@@ -26,6 +26,7 @@ func (g Generator) SpriteScreenshot(ctx context.Context, input string, seconds f
 	ssOptions := transcoder.ScreenshotOptions{
 		OutputPath: "-",
 		OutputType: transcoder.ScreenshotOutputTypeBMP,
+		InputArgs:  g.FFMpegConfig.GetTranscodeInputArgs(),
 	}
 
 	if !isPortrait {
@@ -55,6 +56,7 @@ func (g Generator) SpriteScreenshotSlow(ctx context.Context, input string, frame
 		OutputPath: "-",
 		OutputType: transcoder.ScreenshotOutputTypeBMP,
 		Width:      width,
+		InputArgs:  g.FFMpegConfig.GetTranscodeInputArgs(),
 	}
 
 	args := transcoder.ScreenshotFrame(input, frame, ssOptions)

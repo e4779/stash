@@ -193,6 +193,21 @@ func (g Generator) previewVideoChunk(lockCtx *fsutil.LockContext, fn string, opt
 		videoArgs = append(videoArgs, "-vsync", "2")
 	}
 
+	videoCodec := ffmpeg.VideoCodecLibX264
+	inputArgs := g.FFMpegConfig.GetTranscodeInputArgs()
+
+	// use the hardware codec on the first pass; the fallback pass
+	// deliberately returns to software encoding
+	if !fallback && g.Encoder != nil {
+		if hwCodec := g.Encoder.HWPreviewCodec(); hwCodec != nil {
+			videoCodec = *hwCodec
+			videoFilter = g.Encoder.HWVideoFilter(*hwCodec, scenePreviewWidth)
+			videoArgs = ffmpeg.Args{}.VideoFilter(videoFilter)
+			videoArgs = append(videoArgs, ffmpeg.CodecInit(*hwCodec)...)
+			inputArgs = append(g.Encoder.HWInputArgs(*hwCodec), inputArgs...)
+		}
+	}
+
 	trimOptions := transcoder.TranscodeOptions{
 		OutputPath: options.OutputPath,
 		StartTime:  options.StartTime,
@@ -201,10 +216,10 @@ func (g Generator) previewVideoChunk(lockCtx *fsutil.LockContext, fn string, opt
 		XError:   !fallback,
 		SlowSeek: fallback,
 
-		VideoCodec: ffmpeg.VideoCodecLibX264,
+		VideoCodec: videoCodec,
 		VideoArgs:  videoArgs,
 
-		ExtraInputArgs:  g.FFMpegConfig.GetTranscodeInputArgs(),
+		ExtraInputArgs:  inputArgs,
 		ExtraOutputArgs: g.FFMpegConfig.GetTranscodeOutputArgs(),
 	}
 
